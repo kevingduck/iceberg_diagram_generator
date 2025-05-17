@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icebergify!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #e0f2f7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            min-height: 100vh;
+        }
+
+        .app-title {
+            font-size: 2.8em;
+            margin-bottom: 15px; /* Reduced margin */
+            color: #004d40;
+            font-weight: 600;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .api-key-input-area {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column; /* Stack label and input */
+            align-items: center; /* Center items in the column */
+            gap: 5px;
+            width: 100%;
+            max-width: 650px;
+            background-color: #ffffff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .api-key-input-area label {
+            font-size: 0.9em;
+            color: #333;
+            font-weight: 500;
+        }
+        #apiKeyInput {
+            width: 90%; /* Take most of the width */
+            padding: 8px 10px;
+            font-size: 0.9em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+
+        .input-area {
+            margin-bottom: 25px;
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 650px;
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        #topicInput {
+            flex-grow: 1;
+            padding: 12px 15px;
+            font-size: 1.05em;
+            border: 1px solid #b0bec5;
+            border-radius: 6px;
+            outline-color: #007bff;
+        }
+
+        #generateButton {
+            padding: 12px 20px;
+            font-size: 1.05em;
+            background-color: #00796b; /* Teal button */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-out, transform 0.1s ease;
+            font-weight: 500;
+        }
+
+        #generateButton:hover {
+            background-color: #004d40; /* Darker teal */
+        }
+        #generateButton:active {
+            transform: scale(0.98);
+        }
+        #generateButton:disabled {
+            background-color: #9e9e9e;
+            cursor: not-allowed;
+        }
+
+        #loadingIndicator {
+            font-size: 1.3em;
+            color: #004d40;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .spinner {
+            border: 3px solid rgba(0, 77, 64, 0.2);
+            border-left-color: #004d40;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .iceberg-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px; /* Adjust as needed for your image */
+            margin: 0 auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #fff; /* Fallback if image doesn't load */
+        }
+
+        .iceberg-bg {
+            display: block;
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .overlay-text-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to go through if needed */
+        }
+
+        /* General .tier-text styling */
+        .tier-text {
+            position: absolute;
+            background-color: rgba(0, 20, 40, 0.88); 
+            color: white;
+            padding: 8px 12px; /* Main padding for the tier box */
+            border-radius: 6px;
+            font-size: 0.80em; /* Base font size for items */
+            line-height: 1.45; /* Line height for wrapped rows of items */
+            box-shadow: 0 3px 7px rgba(0,0,0,0.4);
+            max-width: 90%;
+            overflow-y: auto; 
+            border: 1px solid rgba(255,255,255,0.15); 
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+
+        /* Tier title styling */
+        .tier-text h3 {
+            margin-top: 0;
+            margin-bottom: 8px; /* Space before items start */
+            font-size: 1.0em; 
+            color: #e0f2f7; 
+            font-weight: 600;
+            border-bottom: 1px solid rgba(178, 223, 219, 0.4); 
+            padding-bottom: 3px; 
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+            display: block; /* Ensure it takes full width */
+        }
+        
+        /* Container for horizontal items */
+        .tier-items-container {
+            margin-top: 5px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 6px 10px; /* row-gap column-gap */
+            align-items: flex-start; 
+        }
+
+        /* Individual item styling */
+        .tier-item {
+            background-color: rgba(255, 255, 255, 0.08); 
+            padding: 3px 7px; 
+            border-radius: 4px;
+            white-space: nowrap; 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+
+
+        /* --- CSS TIER POSITIONS (max-height might need adjustment for wrapped content) --- */
+        .tier-1 { top: 7%;  left: 50%; transform: translateX(-50%); width: 55%; max-height: 18%; }
+        .tier-2 { top: 26%; left: 50%; transform: translateX(-50%); width: 75%; max-height: 18%; }
+        .tier-3 { top: 45%; left: 50%; transform: translateX(-50%); width: 88%; max-height: 18%; }
+        .tier-4 { top: 64%; left: 50%; transform: translateX(-50%); width: 92%; max-height: 18%; }
+        .tier-5 { top: 83%; left: 50%; transform: translateX(-50%); width: 92%; max-height: 18%; }
+        /* --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- */
+        
+        .tier-text::-webkit-scrollbar { width: 6px; }
+        .tier-text::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 3px; }
+        .tier-text::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+        .tier-text::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.5); }
+
+        #error-message {
+            color: #d32f2f; background-color: #ffebee; border: 1px solid #d32f2f;
+            padding: 10px; border-radius: 4px; margin-top: 15px;
+            max-width: 600px; width: 100%; text-align: center;
+        }
+
+        @media (max-width: 700px) {
+            .app-title { font-size: 2.2em; }
+            .tier-text { font-size: 0.75em; padding: 5px 8px; }
+            .tier-text h3 { font-size: 0.95em; margin-bottom: 6px;}
+            .tier-items-container { gap: 4px 8px; }
+            .tier-item { padding: 2px 5px; }
+            .tier-1 { width: 60%; top: 8%; max-height: 17%; }
+            .tier-2 { width: 80%; top: 26%; max-height: 17%; }
+            .tier-3 { width: 90%; top: 44%; max-height: 17%; }
+            .tier-4 { width: 95%; top: 62%; max-height: 17%; }
+            .tier-5 { width: 95%; top: 80%; max-height: 17%; }
+        }
+         @media (max-width: 480px) {
+            .app-title { font-size: 1.8em; }
+            .api-key-input-area label {font-size: 0.8em;}
+            #apiKeyInput {font-size: 0.8em;}
+            .input-area { flex-direction: column; padding: 10px;}
+            #topicInput, #generateButton { width: 100%; box-sizing: border-box;}
+            .tier-text { font-size: 0.70em; padding: 4px 6px; }
+            .tier-text h3 { font-size: 0.85em; margin-bottom: 4px;}
+            .tier-items-container { gap: 3px 6px; }
+            .tier-item { padding: 2px 4px; }
+            .tier-1 { max-height: 16%; } .tier-2 { max-height: 16%; } .tier-3 { max-height: 16%; }
+            .tier-4 { max-height: 16%; } .tier-5 { max-height: 16%; }
+         }
+    </style>
+</head>
+<body>
+    <h1 class="app-title">🌊 Icebergify! ❄️</h1>
+
+    <div class="api-key-input-area">
+        <label for="apiKeyInput">Enter Your Google Gemini API Key:</label>
+        <input type="password" id="apiKeyInput" placeholder="API Key (e.g., AIza...)">
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="topicInput" placeholder="Enter your Iceberg Topic...">
+        <button id="generateButton">Generate Iceberg</button>
+    </div>
+
+    <div id="loadingIndicator" style="display:none;"><div class="spinner"></div>Digging deep...</div>
+    <div id="error-message" style="display:none;"></div>
+
+    <div class="iceberg-container">
+        <!-- IMPORTANT: Replace 'iceberg.png' with the path to YOUR image or a public URL -->
+        <img src="iceberg.png" alt="Iceberg background" class="iceberg-bg" id="icebergImage">
+        <div class="overlay-text-container">
+            <div id="tier1-text" class="tier-text tier-1"></div>
+            <div id="tier2-text" class="tier-text tier-2"></div>
+            <div id="tier3-text" class="tier-text tier-3"></div>
+            <div id="tier4-text" class="tier-text tier-4"></div>
+            <div id="tier5-text" class="tier-text tier-5"></div>
+        </div>
+    </div>
+
+    <script>
+        const apiKeyInput = document.getElementById('apiKeyInput'); // Get the API key input field
+        const topicInput = document.getElementById('topicInput');
+        const generateButton = document.getElementById('generateButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const errorMessageDiv = document.getElementById('error-message');
+        const tierTextElements = [
+            document.getElementById('tier1-text'), document.getElementById('tier2-text'),
+            document.getElementById('tier3-text'), document.getElementById('tier4-text'),
+            document.getElementById('tier5-text')
+        ];
+        const icebergImage = document.getElementById('icebergImage');
+
+        // NOTE FOR USERS: 
+        // This application requires a Google Gemini API Key.
+        // You can obtain one from Google AI Studio: https://aistudio.google.com/app/apikey
+        // The key should be entered into the input field above.
+        // For local testing, you could temporarily hardcode it here, but ensure it's
+        // removed before committing to a public repository.
+        // const GOOGLE_GEMINI_API_KEY_DEV_ONLY = 'YOUR_TEST_KEY_HERE'; // << DO NOT COMMIT THIS LINE WITH A REAL KEY
+
+        icebergImage.onerror = function() {
+            console.error("Iceberg image failed to load!");
+            displayError("Error: The iceberg background image could not be loaded. Please check the image path (e.g., 'iceberg.png' in the same folder).");
+            document.querySelector('.iceberg-container').style.backgroundColor = '#ADD8E6'; // Light blue fallback
+        };
+
+        generateButton.addEventListener('click', async () => {
+            const userApiKey = apiKeyInput.value.trim(); // Get API key from input
+            const topic = topicInput.value.trim();
+
+            if (!userApiKey) {
+                displayError("Please enter your Google Gemini API Key.");
+                apiKeyInput.focus();
+                return;
+            }
+            if (userApiKey.length < 30) { // Basic validation
+                displayError("The entered API Key seems too short or invalid.");
+                apiKeyInput.focus();
+                return;
+            }
+
+            if (!topic) {
+                alert('Please enter a topic!');
+                topicInput.focus();
+                return;
+            }
+            
+            clearPreviousResults();
+            loadingIndicator.style.display = 'flex';
+            generateButton.disabled = true;
+            errorMessageDiv.style.display = 'none';
+
+            try {
+                const icebergPrompt = getIcebergPrompt(topic);
+                const aiResponse = await callGoogleGeminiAPI(userApiKey, icebergPrompt); // Pass user's API key
+                displayIceberg(aiResponse);
+            } catch (error) {
+                console.error('Error generating iceberg:', error);
+                displayError(`Could not generate iceberg: ${error.message}`);
+            } finally {
+                loadingIndicator.style.display = 'none';
+                generateButton.disabled = false;
+            }
+        });
+
+        function clearPreviousResults() {
+            tierTextElements.forEach(el => el.innerHTML = '');
+        }
+
+        function displayError(message) {
+            errorMessageDiv.textContent = message;
+            errorMessageDiv.style.display = 'block';
+        }
+
+        function getIcebergPrompt(topic, numTiers = 5, itemsPerTier = 4) { // itemsPerTier can be adjusted
+            const tierNames = ["The Tip", "Just Below the Surface", "Deeper Waters", "The Depths", "The Abyss"];
+            let prompt = `You are an expert Iceberg Diagram Creator. Your task is to generate a compelling and well-structured iceberg diagram for the topic: "${topic}".
+The diagram should consist of ${numTiers} tiers, with each tier containing ${itemsPerTier} items.
+
+IMPORTANT STYLE GUIDE:
+- Each item MUST be a VERY SHORT keyword or phrase, ideally 1-3 words. Some can be 4-5 words if absolutely necessary for clarity, but strive for brevity.
+- AVOID full sentences or explanations. Think like labels on a diagram.
+- The goal is density of concepts, not detailed descriptions.
+
+Overall Goal: Create an iceberg where content starts with common knowledge (very common keywords) at the top and becomes progressively more niche, obscure, or specific (more niche keywords) as it goes down.
+
+Tier-Specific Instructions:
+
+`;
+            for (let i = 0; i < numTiers; i++) {
+                prompt += `Tier ${i + 1}: ${tierNames[i]}\n`;
+                if (i === 0) prompt += `   - Content: Widely known, surface-level concepts for "${topic}". (e.g., for "Super Mario": Mario, Goombas, Jumping, Coins).\n`;
+                else if (i === 1) prompt += `   - Content: Less common, but still fairly well-known concepts for "${topic}". (e.g., for "Super Mario": Yoshi, Star Power, Warp Zones, Fire Flower).\n`;
+                else if (i === 2) prompt += `   - Content: Niche concepts, specific details, or common fan discussions for "${topic}". (e.g., for "Super Mario": Tanooki Suit, Minus World, Koopa Kids, Hammer Bros).\n`;
+                else if (i === 3) prompt += `   - Content: Obscure concepts, lesser-known lore, or advanced elements for "${topic}". (e.g., for "Super Mario": Super Mario Land 2 DX, Beta elements, Specific glitches, Wario's first appearance).\n`;
+                else if (i === 4) prompt += `   - Content: Extremely obscure, esoteric, highly specialized, or speculative concepts for "${topic}". (e.g., for "Super Mario": Every copy personalized, Lost levels, Obscure ROM hacks, Tatanga).\n`;
+                prompt += `   - Provide ${itemsPerTier} distinct VERY SHORT keywords or phrases for this tier, following the style guide. Start each with "- ".\n\n`;
+            }
+            prompt += `Formatting Requirements:\n- Start each tier's section EXACTLY with "Tier X: [Tier Name]" (e.g., "Tier 1: The Tip").\n- Each keyword/phrase must be on a new line and start with "- ".\n- Ensure there is at least one blank line of separation between the keywords of one tier and the "Tier X: [Tier Name]" heading of the next tier.\n\nExample Snippet for how ONE tier should be formatted (for a topic like "Cats", with 4 items):
+Tier 1: The Tip
+- Whiskers
+- Purring
+- Meow
+- Kittens
+
+Output ONLY the structured iceberg content as described. Do NOT include any introductory or concluding conversational text, or any text before "Tier 1: The Tip".
+The entire response should just be the tiers and their keywords/phrases.
+`;
+            return prompt;
+        }
+
+        async function callGoogleGeminiAPI(apiKey, promptContent) {
+            const MODEL_NAME = "gemini-1.5-flash-latest"; // Or "gemini-pro" if preferred
+            const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
+
+            const requestBody = {
+                contents: [{ parts: [{ text: promptContent }] }],
+                generationConfig: { temperature: 0.4 } // Lower temperature for more focused, keyword-like output
+            };
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            const responseText = await response.text(); // Get raw text for better debugging if needed
+
+            if (!response.ok) {
+                let errorData;
+                try { errorData = JSON.parse(responseText); }
+                catch (e) { throw new Error(`Google Gemini API error (${response.status}): ${responseText}`); }
+                
+                let errMsg = `Google Gemini API error (${response.status})`;
+                if (errorData?.error?.message) errMsg += `: ${errorData.error.message}`;
+                else if (errorData?.message) errMsg += `: ${errorData.message}`; // Some errors have message at root
+                if (errorData?.promptFeedback?.blockReason) errMsg += `. Prompt blocked: ${errorData.promptFeedback.blockReason}`;
+                throw new Error(errMsg);
+            }
+            
+            let data;
+            try { data = JSON.parse(responseText); }
+            catch (e) {
+                console.error("Failed to parse Gemini JSON response:", responseText);
+                throw new Error("Failed to parse JSON response from Gemini API.");
+            }
+
+            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                return data.candidates[0].content.parts[0].text;
+            } else if (data.promptFeedback?.blockReason) {
+                throw new Error(`Content generation blocked: ${data.promptFeedback.blockReason}. Your topic might be sensitive or the prompt needs adjustment.`);
+            } else if (data.candidates?.[0]?.finishReason === "SAFETY") {
+                let safetyMsg = "Content generation stopped due to safety filters.";
+                if (data.candidates[0].safetyRatings?.[0]?.category) {
+                    safetyMsg += ` Detected category: ${data.candidates[0].safetyRatings[0].category}`;
+                }
+                throw new Error(safetyMsg);
+            } else {
+                console.error("Unexpected API response structure from Gemini:", data);
+                throw new Error("Received an unexpected response structure from Google Gemini API. Check console for details.");
+            }
+        }
+        
+        function displayIceberg(responseText) {
+            clearPreviousResults();
+            const rawTiers = responseText.trim().split(/\n\s*(?=Tier \d+[:\s-])/);
+            let tierIndex = 0;
+
+            for (const rawTierContent of rawTiers) {
+                if (tierIndex >= tierTextElements.length) break;
+
+                const lines = rawTierContent.trim().split('\n');
+                if (lines.length === 0) continue;
+
+                const tierTitleMatch = lines[0].match(/Tier \d+[:\s-]+(.*)/);
+                const tierTitle = tierTitleMatch ? tierTitleMatch[1].trim() : `Tier ${tierIndex + 1}`;
+                
+                const bulletPoints = lines.slice(1).map(line => line.replace(/^- /, '').trim()).filter(line => line);
+
+                const h3 = document.createElement('h3');
+                h3.appendChild(document.createTextNode(tierTitle)); // Sanitize title
+                let currentTierHTML = h3.outerHTML;
+
+                if (bulletPoints.length > 0) {
+                    const itemsContainer = document.createElement('div');
+                    itemsContainer.className = 'tier-items-container';
+                    
+                    bulletPoints.forEach(point => {
+                        const itemSpan = document.createElement('span');
+                        itemSpan.className = 'tier-item';
+                        itemSpan.appendChild(document.createTextNode(point)); // Sanitize item text
+                        itemsContainer.appendChild(itemSpan);
+                    });
+                    currentTierHTML += itemsContainer.outerHTML;
+                } else if (lines.length > 1 && tierTitleMatch) { // Fallback for non-bulleted content below a title
+                     const p = document.createElement('p');
+                     // Sanitize each line before joining
+                     p.innerHTML = lines.slice(1).map(l => document.createTextNode(l).textContent).join('<br>');
+                     currentTierHTML += p.outerHTML;
+                } else if (lines.length === 1 && !tierTitleMatch) { // Single line of text, likely not a tier title
+                     const p = document.createElement('p');
+                     p.appendChild(document.createTextNode(lines[0]));
+                     currentTierHTML = p.outerHTML; // This replaces any default h3 if it's just raw text
+                }
+                
+                tierTextElements[tierIndex].innerHTML = currentTierHTML;
+                tierIndex++;
+            }
+
+            if (tierIndex === 0 && responseText.trim()) { // Fallback if parsing failed completely but there's text
+                 const p = document.createElement('p');
+                 p.style.whiteSpace = 'pre-wrap';
+                 p.style.fontSize = '0.8em';
+                 p.appendChild(document.createTextNode(responseText)); // Sanitize raw output
+                 const h3Fallback = document.createElement('h3');
+                 h3Fallback.appendChild(document.createTextNode("Raw Output (Parsing Failed)"));
+                 tierTextElements[0].innerHTML = h3Fallback.outerHTML + p.outerHTML;
+            }
+        }
+    </script>
+</body>
+</html>
